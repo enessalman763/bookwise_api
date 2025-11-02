@@ -1,0 +1,70 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: bookwise-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bookwise_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bookwise-network
+
+  # Bookwise API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookwise-api
+    environment:
+      PORT: 8080
+      GIN_MODE: release
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: bookwise_db
+      DB_SSLMODE: disable
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash-latest}
+      QUIZ_QUESTIONS_COUNT: 5
+      QUIZ_RETRY_LIMIT: 3
+      ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookwise-network
+    restart: unless-stopped
+
+  # Redis (optional, for future caching)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: bookwise-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - bookwise-network
+
+volumes:
+  postgres_data:
+  # redis_data:
+
+networks:
+  bookwise-network:
+    driver: bridge
+

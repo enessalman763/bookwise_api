@@ -1,0 +1,652 @@
+{
+	"info": {
+		"_postman_id": "bookwise-api-collection",
+		"name": "Bookwise API",
+		"description": "Complete API collection for Bookwise AI Backend - Hybrid book information service with AI quiz generation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "bookwise"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Basic Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Basic health check endpoint to verify API is running"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/health",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"health"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"status\": \"healthy\",\n    \"service\": \"bookwise-api\",\n    \"time\": \"2025-10-28T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Detailed Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health/detailed",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health",
+								"detailed"
+							]
+						},
+						"description": "Detailed health check with database status and worker statistics"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/health/detailed",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"health",
+										"detailed"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"status\": \"healthy\",\n    \"service\": \"bookwise-api\",\n    \"uptime\": \"2h30m15s\",\n    \"components\": {\n        \"database\": \"healthy\",\n        \"quiz_worker\": {\n            \"total_books\": 150,\n            \"pending\": 5,\n            \"generating\": 2,\n            \"completed\": 140,\n            \"failed\": 3,\n            \"queue_size\": 5,\n            \"worker_count\": 3,\n            \"worker_running\": true\n        }\n    },\n    \"timestamp\": \"2025-10-28T10:30:00Z\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Health check endpoints for monitoring API status"
+		},
+		{
+			"name": "Books",
+			"item": [
+				{
+					"name": "Search Book by ISBN",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books/search?q=9780262033848&type=isbn",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "9780262033848",
+									"description": "ISBN to search for"
+								},
+								{
+									"key": "type",
+									"value": "isbn",
+									"description": "Search type: isbn, title, or author"
+								}
+							]
+						},
+						"description": "Search for a book by ISBN using hybrid sources (Google Books + OpenLibrary)"
+					},
+					"response": [
+						{
+							"name": "Success - Cache Miss",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/books/search?q=9780262033848&type=isbn",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"books",
+										"search"
+									],
+									"query": [
+										{
+											"key": "q",
+											"value": "9780262033848"
+										},
+										{
+											"key": "type",
+											"value": "isbn"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"title\": \"Introduction to Algorithms\",\n        \"authors\": [\"Thomas H. Cormen\", \"Charles E. Leiserson\"],\n        \"isbn\": \"9780262033848\",\n        \"isbn13\": \"9780262033848\",\n        \"description\": \"A comprehensive textbook covering the full spectrum of modern algorithms...\",\n        \"publisher\": \"MIT Press\",\n        \"published_date\": \"2009-07-31\",\n        \"page_count\": 1312,\n        \"categories\": [\"Computers\", \"Algorithms\"],\n        \"language\": \"en\",\n        \"cover_url\": \"https://books.google.com/books/content?id=...\",\n        \"thumbnail_url\": \"https://books.google.com/books/content?id=...\",\n        \"data_sources\": [\"google_books\", \"open_library\"],\n        \"quiz_status\": \"generating\",\n        \"quiz_id\": null,\n        \"created_at\": \"2025-10-28T10:30:00Z\"\n    },\n    \"cache_hit\": false,\n    \"message\": \"Kitap başarıyla getirildi. Quiz oluşturuluyor...\"\n}"
+						},
+						{
+							"name": "Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/books/search?q=9999999999999&type=isbn",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"books",
+										"search"
+									],
+									"query": [
+										{
+											"key": "q",
+											"value": "9999999999999"
+										},
+										{
+											"key": "type",
+											"value": "isbn"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"error\": \"Kitap bulunamadı\",\n    \"details\": \"book not found in any source\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Search Book by Title",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books/search?q=Introduction to Algorithms&type=title",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "Introduction to Algorithms",
+									"description": "Book title to search for"
+								},
+								{
+									"key": "type",
+									"value": "title"
+								}
+							]
+						},
+						"description": "Search for a book by title"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Book by Author",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books/search?q=Thomas Cormen&type=author",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "Thomas Cormen",
+									"description": "Author name to search for"
+								},
+								{
+									"key": "type",
+									"value": "author"
+								}
+							]
+						},
+						"description": "Search for a book by author name"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Book by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "550e8400-e29b-41d4-a716-446655440000",
+									"description": "Book UUID"
+								}
+							]
+						},
+						"description": "Get book details by UUID"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/books/:id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"books",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "550e8400-e29b-41d4-a716-446655440000"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"title\": \"Introduction to Algorithms\",\n        \"authors\": [\"Thomas H. Cormen\", \"Charles E. Leiserson\"],\n        \"isbn\": \"9780262033848\",\n        \"quiz_status\": \"completed\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Book by ISBN",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books/isbn/:isbn",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books",
+								"isbn",
+								":isbn"
+							],
+							"variable": [
+								{
+									"key": "isbn",
+									"value": "9780262033848",
+									"description": "Book ISBN (ISBN-10 or ISBN-13)"
+								}
+							]
+						},
+						"description": "Get book details by ISBN"
+					},
+					"response": []
+				},
+				{
+					"name": "List Books",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/books?page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"books"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10, max: 100)"
+								}
+							]
+						},
+						"description": "List all books with pagination"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/books?page=1&limit=10",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"books"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"title\": \"Introduction to Algorithms\",\n            \"authors\": [\"Thomas H. Cormen\"],\n            \"isbn\": \"9780262033848\"\n        }\n    ],\n    \"pagination\": {\n        \"page\": 1,\n        \"limit\": 10,\n        \"total\": 150,\n        \"total_pages\": 15\n    }\n}"
+						}
+					]
+				}
+			],
+			"description": "Book-related endpoints for searching and retrieving book information"
+		},
+		{
+			"name": "Quiz",
+			"item": [
+				{
+					"name": "Get Quiz by Book ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/quiz/:bookId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"quiz",
+								":bookId"
+							],
+							"variable": [
+								{
+									"key": "bookId",
+									"value": "550e8400-e29b-41d4-a716-446655440000",
+									"description": "Book UUID"
+								}
+							]
+						},
+						"description": "Get quiz for a specific book by book ID"
+					},
+					"response": [
+						{
+							"name": "Success - Quiz Completed",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/quiz/:bookId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"quiz",
+										":bookId"
+									],
+									"variable": [
+										{
+											"key": "bookId",
+											"value": "550e8400-e29b-41d4-a716-446655440000"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"id\": \"660e8400-e29b-41d4-a716-446655440111\",\n        \"book_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"questions\": [\n            {\n                \"question\": \"Big O notasyonu ne için kullanılır?\",\n                \"options\": [\n                    \"A) Algoritmanın doğruluğunu ölçmek\",\n                    \"B) Algoritmanın zaman karmaşıklığını ifade etmek\",\n                    \"C) Algoritmanın bellek kullanımını hesaplamak\",\n                    \"D) Algoritmanın okunabilirliğini değerlendirmek\"\n                ],\n                \"answer\": \"B) Algoritmanın zaman karmaşıklığını ifade etmek\",\n                \"explanation\": \"Big O notasyonu, algoritmaların asimptotik zaman karmaşıklığını tanımlar.\"\n            },\n            {\n                \"question\": \"Merge sort algoritmasının zaman karmaşıklığı nedir?\",\n                \"options\": [\n                    \"A) O(n)\",\n                    \"B) O(n log n)\",\n                    \"C) O(n²)\",\n                    \"D) O(log n)\"\n                ],\n                \"answer\": \"B) O(n log n)\",\n                \"explanation\": \"Merge sort, divide-and-conquer yaklaşımı kullanır ve O(n log n) karmaşıklığa sahiptir.\"\n            }\n        ],\n        \"ai_model\": \"gpt-4o-mini\",\n        \"created_at\": \"2025-10-28T10:31:30Z\"\n    }\n}"
+						},
+						{
+							"name": "Quiz Generating",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/quiz/:bookId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"quiz",
+										":bookId"
+									],
+									"variable": [
+										{
+											"key": "bookId",
+											"value": "550e8400-e29b-41d4-a716-446655440000"
+										}
+									]
+								}
+							},
+							"status": "Accepted",
+							"code": 202,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"status\": \"generating\",\n    \"message\": \"Quiz şu anda oluşturuluyor. Lütfen birkaç saniye sonra tekrar deneyin.\"\n}"
+						},
+						{
+							"name": "Quiz Pending",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/quiz/:bookId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"quiz",
+										":bookId"
+									],
+									"variable": [
+										{
+											"key": "bookId",
+											"value": "550e8400-e29b-41d4-a716-446655440000"
+										}
+									]
+								}
+							},
+							"status": "Accepted",
+							"code": 202,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"body": "{\n    \"success\": false,\n    \"status\": \"pending\",\n    \"message\": \"Quiz henüz oluşturulmadı. Lütfen daha sonra tekrar deneyin.\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Quiz by Quiz ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/quiz/id/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"quiz",
+								"id",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "660e8400-e29b-41d4-a716-446655440111",
+									"description": "Quiz UUID"
+								}
+							]
+						},
+						"description": "Get quiz by quiz ID"
+					},
+					"response": []
+				}
+			],
+			"description": "Quiz-related endpoints for AI-generated quizzes"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
+
