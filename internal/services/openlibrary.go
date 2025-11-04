@@ -72,7 +72,7 @@ type OpenLibrarySearchDoc struct {
 	CoverI           int      `json:"cover_i"`
 }
 
-// SearchByISBN searches for a book by ISBN
+// SearchByISBN searches for a book by ISBN (returns single result)
 func (s *OpenLibraryService) SearchByISBN(isbn string) (*BookData, error) {
 	// Clean ISBN (remove hyphens)
 	cleanISBN := strings.ReplaceAll(isbn, "-", "")
@@ -95,24 +95,68 @@ func (s *OpenLibraryService) SearchByISBN(isbn string) (*BookData, error) {
 	}
 
 	// Fallback to search API
-	return s.searchByQuery(fmt.Sprintf("isbn:%s", cleanISBN))
+	results, err := s.searchMultipleByQuery(fmt.Sprintf("isbn:%s", cleanISBN), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// SearchByTitle searches for a book by title
+// SearchByTitle searches for a book by title (returns single result)
 func (s *OpenLibraryService) SearchByTitle(title string) (*BookData, error) {
-	return s.searchByQuery(fmt.Sprintf("title:%s", title))
+	results, err := s.searchMultipleByQuery(fmt.Sprintf("title:%s", title), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// SearchByAuthor searches for books by author
+// SearchByAuthor searches for books by author (returns single result)
 func (s *OpenLibraryService) SearchByAuthor(author string) (*BookData, error) {
-	return s.searchByQuery(fmt.Sprintf("author:%s", author))
+	results, err := s.searchMultipleByQuery(fmt.Sprintf("author:%s", author), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// searchByQuery performs a search query
-func (s *OpenLibraryService) searchByQuery(query string) (*BookData, error) {
+// SearchMultipleByISBN searches for books by ISBN (returns multiple results)
+func (s *OpenLibraryService) SearchMultipleByISBN(isbn string, maxResults int) ([]*BookData, error) {
+	cleanISBN := strings.ReplaceAll(isbn, "-", "")
+	return s.searchMultipleByQuery(fmt.Sprintf("isbn:%s", cleanISBN), maxResults)
+}
+
+// SearchMultipleByTitle searches for books by title (returns multiple results)
+func (s *OpenLibraryService) SearchMultipleByTitle(title string, maxResults int) ([]*BookData, error) {
+	return s.searchMultipleByQuery(fmt.Sprintf("title:%s", title), maxResults)
+}
+
+// SearchMultipleByAuthor searches for books by author (returns multiple results)
+func (s *OpenLibraryService) SearchMultipleByAuthor(author string, maxResults int) ([]*BookData, error) {
+	return s.searchMultipleByQuery(fmt.Sprintf("author:%s", author), maxResults)
+}
+
+// searchMultipleByQuery performs a search query and returns multiple results
+func (s *OpenLibraryService) searchMultipleByQuery(query string, maxResults int) ([]*BookData, error) {
+	if maxResults <= 0 {
+		maxResults = 10
+	}
+	if maxResults > 100 {
+		maxResults = 100 // Open Library API allows up to 100
+	}
+
 	params := url.Values{}
 	params.Add("q", query)
-	params.Add("limit", "1")
+	params.Add("limit", fmt.Sprintf("%d", maxResults))
 
 	reqURL := fmt.Sprintf("%s/search.json?%s", s.BaseURL, params.Encode())
 
@@ -136,7 +180,13 @@ func (s *OpenLibraryService) searchByQuery(query string) (*BookData, error) {
 		return nil, fmt.Errorf("no books found")
 	}
 
-	return s.searchDocToBookData(&result.Docs[0]), nil
+	// Convert all results to BookData
+	books := make([]*BookData, 0, len(result.Docs))
+	for i := range result.Docs {
+		books = append(books, s.searchDocToBookData(&result.Docs[i]))
+	}
+
+	return books, nil
 }
 
 // toBookData converts Open Library response to normalized BookData

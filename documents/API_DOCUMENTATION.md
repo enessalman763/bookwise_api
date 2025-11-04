@@ -64,30 +64,104 @@ Detailed health check with system statistics.
 
 #### GET /api/v1/books/search
 
-Search for books using hybrid sources (Google Books + OpenLibrary).
+Search for books using hybrid sources (Google Books + OpenLibrary). Returns a list of search results.
+
+> ⚠️ **Note**: This endpoint only searches for books and returns results. It does NOT save books to the database or generate quizzes. Use `POST /api/v1/books` to save a book.
 
 **Query Parameters:**
 - `q` (required): Search query
-- `type` (required): Search type - `isbn`, `title`, or `author`
+- `type` (optional): Search type - `isbn`, `title`, or `author` (default: `title`)
+- `limit` (optional): Maximum number of results (default: 10, max: 40)
 
 **Examples:**
+
+Search by Title:
+```bash
+curl "http://localhost:8080/api/v1/books/search?q=Introduction+to+Algorithms&type=title&limit=10"
+```
 
 Search by ISBN:
 ```bash
 curl "http://localhost:8080/api/v1/books/search?q=9780262033848&type=isbn"
 ```
 
-Search by Title:
-```bash
-curl "http://localhost:8080/api/v1/books/search?q=Introduction+to+Algorithms&type=title"
-```
-
 Search by Author:
 ```bash
-curl "http://localhost:8080/api/v1/books/search?q=Thomas+Cormen&type=author"
+curl "http://localhost:8080/api/v1/books/search?q=Thomas+Cormen&type=author&limit=5"
 ```
 
 **Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "title": "Introduction to Algorithms",
+      "authors": ["Thomas H. Cormen", "Charles E. Leiserson"],
+      "isbn": "0262033844",
+      "isbn13": "9780262033848",
+      "description": "A comprehensive textbook covering...",
+      "publisher": "MIT Press",
+      "published_date": "2009-07-31",
+      "page_count": 1312,
+      "categories": ["Computers", "Algorithms"],
+      "language": "en",
+      "cover_url": "https://books.google.com/books/content?id=...",
+      "thumbnail_url": "https://books.google.com/books/content?id=...",
+      "source": "google_books"
+    },
+    {
+      "title": "Introduction to Algorithms, 4th Edition",
+      "authors": ["Thomas H. Cormen"],
+      "isbn": "026204630X",
+      "isbn13": "9780262046305",
+      "description": "...",
+      "source": "open_library"
+    }
+  ],
+  "count": 2,
+  "message": "2 kitap bulundu"
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "error": "Kitap bulunamadı",
+  "details": "no books found in any source"
+}
+```
+
+---
+
+#### POST /api/v1/books
+
+Save a book to the database. Fetches book details from external sources using ISBN and saves it.
+
+**Request Body:**
+```json
+{
+  "isbn": "9780262033848",
+  "generate_quiz": true
+}
+```
+
+**Parameters:**
+- `isbn` (required): Book ISBN (ISBN-10 or ISBN-13)
+- `generate_quiz` (optional): Whether to automatically generate quiz (default: false)
+
+**Example:**
+```bash
+curl -X POST "http://localhost:8080/api/v1/books" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isbn": "9780262033848",
+    "generate_quiz": true
+  }'
+```
+
+**Response (201 Created):**
 ```json
 {
   "success": true,
@@ -110,8 +184,20 @@ curl "http://localhost:8080/api/v1/books/search?q=Thomas+Cormen&type=author"
     "quiz_id": null,
     "created_at": "2025-10-28T10:30:00Z"
   },
-  "cache_hit": false,
-  "message": "Kitap başarıyla getirildi. Quiz oluşturuluyor..."
+  "message": "Kitap başarıyla kaydedildi. Quiz oluşturuluyor..."
+}
+```
+
+**Response (200 OK) - Book Already Exists:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "title": "Introduction to Algorithms",
+    ...
+  },
+  "message": "Kitap zaten kayıtlı"
 }
 ```
 
@@ -226,6 +312,55 @@ curl "http://localhost:8080/api/v1/books?page=1&limit=20"
     "total": 150,
     "total_pages": 8
   }
+}
+```
+
+---
+
+#### POST /api/v1/books/:id/generate-quiz
+
+Manually trigger quiz generation for a specific book.
+
+**Path Parameters:**
+- `id` (required): Book UUID
+
+**Example:**
+```bash
+curl -X POST "http://localhost:8080/api/v1/books/550e8400-e29b-41d4-a716-446655440000/generate-quiz"
+```
+
+**Response (202 Accepted) - Quiz Generation Started:**
+```json
+{
+  "success": true,
+  "message": "Quiz oluşturma işlemi başlatıldı. Lütfen birkaç saniye sonra kontrol edin.",
+  "status": "generating"
+}
+```
+
+**Response (200 OK) - Quiz Already Exists:**
+```json
+{
+  "success": true,
+  "message": "Quiz zaten oluşturulmuş. Yeni quiz oluşturulsun mu?",
+  "status": "completed"
+}
+```
+
+**Response (202 Accepted) - Already Generating:**
+```json
+{
+  "success": false,
+  "message": "Quiz şu anda oluşturuluyor. Lütfen bekleyin.",
+  "status": "generating"
+}
+```
+
+**Response (404 Not Found):**
+```json
+{
+  "success": false,
+  "error": "Kitap bulunamadı"
 }
 ```
 
@@ -350,6 +485,7 @@ curl "http://localhost:8080/api/v1/quiz/id/660e8400-e29b-41d4-a716-446655440111"
 | Code | Description |
 |------|-------------|
 | 200  | OK - Request successful |
+| 201  | Created - Resource created successfully |
 | 202  | Accepted - Request accepted but processing not complete (quiz generating) |
 | 400  | Bad Request - Invalid parameters |
 | 404  | Not Found - Resource not found |
@@ -400,26 +536,58 @@ All errors follow this format:
 
 ## Best Practices
 
-1. **ISBN Search**: Always use ISBN search when you have the ISBN for best accuracy
-2. **Cache**: Check if a book exists using `/books/isbn/:isbn` before calling `/books/search`
-3. **Quiz Polling**: If quiz status is `generating`, poll `/quiz/:bookId` every 5-10 seconds
-4. **Error Handling**: Always check the `success` field in responses
+1. **Two-Step Process**: 
+   - First, search for books using `GET /books/search` to get a list of results
+   - Then, save the desired book using `POST /books` with the ISBN
+2. **Quiz Generation**: 
+   - Quiz is NOT generated automatically unless you set `generate_quiz: true` in POST /books
+   - You can manually trigger quiz generation using `POST /books/:id/generate-quiz`
+3. **ISBN Search**: Always use ISBN search when you have the ISBN for best accuracy
+4. **Cache**: Check if a book exists using `/books/isbn/:isbn` before calling `/books/search`
+5. **Quiz Polling**: If quiz status is `generating`, poll `/quiz/:bookId` every 5-10 seconds
+6. **Error Handling**: Always check the `success` field in responses
 
 ---
 
 ## Examples with cURL
 
-### Complete Workflow
+### Complete Workflow (Recommended)
 
 ```bash
-# 1. Search for a book
-curl "http://localhost:8080/api/v1/books/search?q=9780262033848&type=isbn"
+# 1. Search for books by title (returns list)
+curl "http://localhost:8080/api/v1/books/search?q=Introduction+to+Algorithms&type=title&limit=10"
 
-# 2. Get book details (extract ID from previous response)
+# 2. Select a book from results and save it (using ISBN)
+curl -X POST "http://localhost:8080/api/v1/books" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isbn": "9780262033848",
+    "generate_quiz": true
+  }'
+
+# 3. Get book details (extract ID from previous response)
 curl "http://localhost:8080/api/v1/books/550e8400-e29b-41d4-a716-446655440000"
 
-# 3. Wait for quiz to be generated (check quiz_status)
-# 4. Get quiz
+# 4. Wait for quiz to be generated (check quiz_status)
+# 5. Get quiz
+curl "http://localhost:8080/api/v1/quiz/550e8400-e29b-41d4-a716-446655440000"
+```
+
+### Manual Quiz Generation Workflow
+
+```bash
+# 1. Save book without quiz
+curl -X POST "http://localhost:8080/api/v1/books" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isbn": "9780262033848",
+    "generate_quiz": false
+  }'
+
+# 2. Later, manually trigger quiz generation
+curl -X POST "http://localhost:8080/api/v1/books/550e8400-e29b-41d4-a716-446655440000/generate-quiz"
+
+# 3. Poll for quiz
 curl "http://localhost:8080/api/v1/quiz/550e8400-e29b-41d4-a716-446655440000"
 ```
 
@@ -453,5 +621,17 @@ Client libraries for popular languages coming soon:
 
 ---
 
-**Last Updated**: October 28, 2025
+**Last Updated**: November 4, 2025
+
+---
+
+## 🔄 Recent Changes
+
+### November 4, 2025
+- **Breaking Change**: `GET /books/search` now returns a list of books instead of a single book
+- **Breaking Change**: `GET /books/search` no longer saves books to database or generates quizzes automatically
+- **New Endpoint**: `POST /books` - Save a book to the database with optional quiz generation
+- **New Endpoint**: `POST /books/:id/generate-quiz` - Manually trigger quiz generation for a specific book
+- **Improved**: Search results now return multiple books from both Google Books and Open Library
+- **Improved**: Better control over quiz generation (manual vs automatic)
 

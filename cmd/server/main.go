@@ -77,9 +77,11 @@ func main() {
 		// Books routes
 		books := v1.Group("/books")
 		{
-			books.GET("/search", booksHandler.SearchBook)      // GET /api/v1/books/search?q=...&type=...
+			books.GET("/search", booksHandler.SearchBook)      // GET /api/v1/books/search?q=...&type=...&limit=...
+			books.POST("", booksHandler.SaveBook)              // POST /api/v1/books (body: {isbn, generate_quiz})
 			books.GET("", booksHandler.ListBooks)              // GET /api/v1/books?page=1&limit=10
 			books.GET("/:id", booksHandler.GetBookByID)        // GET /api/v1/books/:id
+			books.POST("/:id/generate-quiz", booksHandler.GenerateQuiz) // POST /api/v1/books/:id/generate-quiz
 			books.GET("/isbn/:isbn", booksHandler.GetBookByISBN) // GET /api/v1/books/isbn/:isbn
 		}
 
@@ -93,14 +95,16 @@ func main() {
 
 	// Print routes
 	log.Println("\n📚 Bookwise API Routes:")
-	log.Println("  GET  /health")
-	log.Println("  GET  /health/detailed")
-	log.Println("  GET  /api/v1/books/search?q={query}&type={isbn|title|author}")
-	log.Println("  GET  /api/v1/books")
-	log.Println("  GET  /api/v1/books/:id")
-	log.Println("  GET  /api/v1/books/isbn/:isbn")
-	log.Println("  GET  /api/v1/quiz/:bookId")
-	log.Println("  GET  /api/v1/quiz/id/:id")
+	log.Println("  GET   /health")
+	log.Println("  GET   /health/detailed")
+	log.Println("  GET   /api/v1/books/search?q={query}&type={isbn|title|author}&limit={limit}")
+	log.Println("  POST  /api/v1/books (body: {isbn, generate_quiz})")
+	log.Println("  GET   /api/v1/books")
+	log.Println("  GET   /api/v1/books/:id")
+	log.Println("  POST  /api/v1/books/:id/generate-quiz")
+	log.Println("  GET   /api/v1/books/isbn/:isbn")
+	log.Println("  GET   /api/v1/quiz/:bookId")
+	log.Println("  GET   /api/v1/quiz/id/:id")
 
 	// Print worker stats
 	quizWorker.PrettyPrintStats()

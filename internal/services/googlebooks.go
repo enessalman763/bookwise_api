@@ -88,26 +88,69 @@ type BookData struct {
 	RawData       interface{}
 }
 
-// SearchByISBN searches for a book by ISBN
+// SearchByISBN searches for a book by ISBN (returns single result)
 func (s *GoogleBooksService) SearchByISBN(isbn string) (*BookData, error) {
-	return s.search(fmt.Sprintf("isbn:%s", isbn))
+	results, err := s.searchMultiple(fmt.Sprintf("isbn:%s", isbn), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// SearchByTitle searches for a book by title
+// SearchByTitle searches for books by title (returns single result)
 func (s *GoogleBooksService) SearchByTitle(title string) (*BookData, error) {
-	return s.search(fmt.Sprintf("intitle:%s", title))
+	results, err := s.searchMultiple(fmt.Sprintf("intitle:%s", title), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// SearchByAuthor searches for books by author
+// SearchByAuthor searches for books by author (returns single result)
 func (s *GoogleBooksService) SearchByAuthor(author string) (*BookData, error) {
-	return s.search(fmt.Sprintf("inauthor:%s", author))
+	results, err := s.searchMultiple(fmt.Sprintf("inauthor:%s", author), 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return results[0], nil
 }
 
-// search performs the actual search query
-func (s *GoogleBooksService) search(query string) (*BookData, error) {
+// SearchMultipleByISBN searches for books by ISBN (returns multiple results)
+func (s *GoogleBooksService) SearchMultipleByISBN(isbn string, maxResults int) ([]*BookData, error) {
+	return s.searchMultiple(fmt.Sprintf("isbn:%s", isbn), maxResults)
+}
+
+// SearchMultipleByTitle searches for books by title (returns multiple results)
+func (s *GoogleBooksService) SearchMultipleByTitle(title string, maxResults int) ([]*BookData, error) {
+	return s.searchMultiple(fmt.Sprintf("intitle:%s", title), maxResults)
+}
+
+// SearchMultipleByAuthor searches for books by author (returns multiple results)
+func (s *GoogleBooksService) SearchMultipleByAuthor(author string, maxResults int) ([]*BookData, error) {
+	return s.searchMultiple(fmt.Sprintf("inauthor:%s", author), maxResults)
+}
+
+// searchMultiple performs the actual search query and returns multiple results
+func (s *GoogleBooksService) searchMultiple(query string, maxResults int) ([]*BookData, error) {
+	if maxResults <= 0 {
+		maxResults = 10
+	}
+	if maxResults > 40 {
+		maxResults = 40 // Google Books API limit
+	}
+
 	params := url.Values{}
 	params.Add("q", query)
-	params.Add("maxResults", "1")
+	params.Add("maxResults", fmt.Sprintf("%d", maxResults))
 	if s.APIKey != "" {
 		params.Add("key", s.APIKey)
 	}
@@ -134,8 +177,13 @@ func (s *GoogleBooksService) search(query string) (*BookData, error) {
 		return nil, fmt.Errorf("no books found")
 	}
 
-	// Convert first result to normalized BookData
-	return s.toBookData(&result.Items[0]), nil
+	// Convert all results to normalized BookData
+	books := make([]*BookData, 0, len(result.Items))
+	for i := range result.Items {
+		books = append(books, s.toBookData(&result.Items[i]))
+	}
+	
+	return books, nil
 }
 
 // toBookData converts Google Books response to normalized BookData

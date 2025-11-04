@@ -25,7 +25,7 @@ func NewBookMergerService(googleBooksAPIKey string) *BookMergerService {
 	}
 }
 
-// SearchBook searches for a book using hybrid sources
+// SearchBook searches for a book using hybrid sources (returns single result)
 func (s *BookMergerService) SearchBook(query, searchType string) (*models.Book, error) {
 	var googleData, openLibraryData *BookData
 	var err error
@@ -80,6 +80,100 @@ func (s *BookMergerService) SearchBook(query, searchType string) (*models.Book, 
 	mergedBook := s.mergeBookData(googleData, openLibraryData, sources)
 	
 	return mergedBook, nil
+}
+
+// SearchBooks searches for books and returns multiple results
+func (s *BookMergerService) SearchBooks(query, searchType string, maxResults int) ([]*BookData, error) {
+	if maxResults <= 0 {
+		maxResults = 10
+	}
+
+	var googleBooks, openLibraryBooks []*BookData
+	var err error
+
+	// Try Google Books first
+	log.Printf("🔍 Searching Google Books for: %s (type: %s)", query, searchType)
+	switch searchType {
+	case "isbn":
+		googleBooks, err = s.googleBooks.SearchMultipleByISBN(query, maxResults)
+	case "title":
+		googleBooks, err = s.googleBooks.SearchMultipleByTitle(query, maxResults)
+	case "author":
+		googleBooks, err = s.googleBooks.SearchMultipleByAuthor(query, maxResults)
+	default:
+		return nil, fmt.Errorf("invalid search type: %s", searchType)
+	}
+
+	if err == nil && len(googleBooks) > 0 {
+		log.Printf("✅ Found %d books in Google Books", len(googleBooks))
+	} else {
+		log.Printf("⚠️ Google Books: %v", err)
+	}
+
+	// Try Open Library
+	log.Printf("🔍 Searching Open Library for: %s (type: %s)", query, searchType)
+	switch searchType {
+	case "isbn":
+		openLibraryBooks, err = s.openLibrary.SearchMultipleByISBN(query, maxResults)
+	case "title":
+		openLibraryBooks, err = s.openLibrary.SearchMultipleByTitle(query, maxResults)
+	case "author":
+		openLibraryBooks, err = s.openLibrary.SearchMultipleByAuthor(query, maxResults)
+	}
+
+	if err == nil && len(openLibraryBooks) > 0 {
+		log.Printf("✅ Found %d books in Open Library", len(openLibraryBooks))
+	} else {
+		log.Printf("⚠️ Open Library: %v", err)
+	}
+
+	// Merge results - prioritize Google Books, add unique results from Open Library
+	results := make([]*BookData, 0)
+	seenISBNs := make(map[string]bool)
+
+	// Add Google Books results first
+	if len(googleBooks) > 0 {
+		for _, book := range googleBooks {
+			results = append(results, book)
+			if book.ISBN != "" {
+				seenISBNs[book.ISBN] = true
+			}
+			if book.ISBN13 != "" {
+				seenISBNs[book.ISBN13] = true
+			}
+		}
+	}
+
+	// Add unique Open Library results
+	if len(openLibraryBooks) > 0 {
+		for _, book := range openLibraryBooks {
+			// Skip if we've already seen this ISBN
+			isDuplicate := false
+			if book.ISBN != "" && seenISBNs[book.ISBN] {
+				isDuplicate = true
+			}
+			if book.ISBN13 != "" && seenISBNs[book.ISBN13] {
+				isDuplicate = true
+			}
+			
+			if !isDuplicate {
+				results = append(results, book)
+				if book.ISBN != "" {
+					seenISBNs[book.ISBN] = true
+				}
+				if book.ISBN13 != "" {
+					seenISBNs[book.ISBN13] = true
+				}
+			}
+		}
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no books found in any source")
+	}
+
+	log.Printf("✅ Found total %d unique books", len(results))
+	return results, nil
 }
 
 // mergeBookData merges book data from multiple sources
